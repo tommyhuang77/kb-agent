@@ -13,11 +13,17 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 let supabase;
 
+console.log('🚀 Starting Supabase initialization...');
+console.log('URL:', SUPABASE_URL);
+
 try {
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   console.log('✅ Supabase initialized successfully');
+  console.log('Supabase object:', supabase);
 } catch (error) {
-  console.warn('⚠️ Supabase initialization failed:', error);
+  console.error('❌ Supabase initialization failed:', error);
+  console.error('Error message:', error.message);
+  console.error('Error stack:', error.stack);
 }
 
 // 初始化表（自動創建）
