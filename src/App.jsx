@@ -372,9 +372,28 @@ A: 我們的生產標準遵循 ISO 9001 規範。
   }
 ];
 
+// LocalStorage 工具函數
+const saveDocsToStorage = (docs) => {
+  try {
+    localStorage.setItem('kb-agent-documents', JSON.stringify(docs));
+  } catch (e) {
+    console.error('Failed to save documents to localStorage:', e);
+  }
+};
+
+const loadDocsFromStorage = () => {
+  try {
+    const saved = localStorage.getItem('kb-agent-documents');
+    return saved ? JSON.parse(saved) : DEFAULT_DOCS;
+  } catch (e) {
+    console.error('Failed to load documents from localStorage:', e);
+    return DEFAULT_DOCS;
+  }
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('chat'); 
-  const [documents, setDocuments] = useState(DEFAULT_DOCS);
+  const [documents, setDocuments] = useState(() => loadDocsFromStorage());
   const [chunks, setChunks] = useState([]);
   const [expandedDocId, setExpandedDocId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -390,6 +409,11 @@ export default function App() {
   const t = TRANSLATIONS[lang]; // 便捷存取函數
 
   const messagesEndRef = useRef(null);
+
+  // 當 documents 改變時，保存到 localStorage
+  useEffect(() => {
+    saveDocsToStorage(documents);
+  }, [documents]);
 
   // 初始化與語言變更時更新歡迎訊息
   useEffect(() => {
