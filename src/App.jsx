@@ -181,27 +181,40 @@ const sniperSearch = (query, allChunks) => {
   
   if (effectiveQuery.length === 0) return [];
 
-  const titleMatches = allChunks.filter(chunk => {
+  // 第一階段：尋找完全匹配
+  const perfectMatches = allChunks.filter(chunk => {
     const regex = createFlexibleRegex(effectiveQuery);
-    return regex.test(chunk.docTitle) || regex.test(chunk.chunkTitle);
+    // 只在文件標題或 chunk 標題中尋找完全匹配
+    const docTitleMatch = regex.test(chunk.docTitle);
+    const chunkTitleMatch = regex.test(chunk.chunkTitle);
+    return docTitleMatch || chunkTitleMatch;
   });
 
-  if (titleMatches.length > 0) {
-    return titleMatches.map(chunk => {
+  if (perfectMatches.length > 0) {
+    return perfectMatches.map(chunk => {
         let score = 1000; 
         const regex = createFlexibleRegex(effectiveQuery);
-        if (regex.test(chunk.content)) score += 500; 
+        // 如果在內容中也找到，加分
+        if (regex.test(chunk.content)) score += 500;
+        // 如果在 chunk 標題中（比文件標題更精確）
+        if (regex.test(chunk.chunkTitle)) score += 300;
         return { ...chunk, score, debug: { method: 'Title Sniper', exact: true } };
     }).sort((a, b) => b.score - a.score);
   }
 
+  // 第二階段：內容匹配
   return allChunks.map(chunk => {
     let score = 0;
     const chunkText = chunk.rawText; 
     const exactRegex = createFlexibleRegex(effectiveQuery);
 
+    // 在整個文本中尋找完全匹配
     if (exactRegex.test(chunkText)) score += 200;
 
+    // 如果沒有找到完全匹配，也不要返回（避免無關結果）
+    if (score === 0) return { ...chunk, score: -1, debug: { method: 'No Match' } };
+
+    // Bigram 匹配作為輔助
     let bigramHits = 0;
     for (let i = 0; i < effectiveQuery.length - 1; i++) {
       const bigram = effectiveQuery.substring(i, i+2);
@@ -221,7 +234,7 @@ const sniperSearch = (query, allChunks) => {
       debug: { method: 'Content Match', bigramHits }
     };
   })
-  .filter(c => c.score > 20)
+  .filter(c => c.score > 0)  // 只返回有相關性的結果
   .sort((a, b) => b.score - a.score);
 };
 
