@@ -8,8 +8,8 @@ import { createClient } from '@supabase/supabase-js';
 // 3. 進入 Settings → API Keys
 // 4. 複製 anon key 和 project URL
 
-const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || 'https://your-project.supabase.co';
-const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY || 'your-anon-key-here';
+const SUPABASE_URL = 'https://grolfjktzmibeupkqrll.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdyb2xmamt0em1pYmV1cGtxcmxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMTMzMjYsImV4cCI6MjA3MDc4OTMyNn0.4gbWx4wGo0JybfQcvjfNQVbiAGU6DifaMsLU5lG36uU';
 
 let supabase;
 
