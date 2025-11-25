@@ -646,7 +646,12 @@ export default function App() {
           </button>
 
           <button 
-            onClick={() => setDebugMode(!debugMode)} 
+            onClick={() => {
+              setDebugMode(!debugMode);
+              if (!debugMode) {
+                console.log('🔍 Debug Info:', window.__SUPABASE_DEBUG__);
+              }
+            }} 
             className={`p-3 rounded-full transition-all duration-300 ${debugMode ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-400 hover:bg-white/50'}`}
             title="Debug Mode"
           >
@@ -663,11 +668,25 @@ export default function App() {
             <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3 tracking-tight">
               {activeTab === 'chat' ? t.app_chat_title : t.app_kb_title}
               <span className="text-[10px] font-bold px-2 py-1 bg-white/60 backdrop-blur text-slate-500 rounded-full border border-white/50 shadow-sm">{t.app_version}</span>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-full border shadow-sm ${supabaseReady ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
+                DB: {supabaseReady ? 'Supabase' : 'Local'}
+              </span>
             </h1>
             <p className="text-xs font-medium text-slate-400 mt-1 ml-1">
               {activeTab === 'chat' ? (lang === 'zh-TW' ? 'iOS 26 極致介面' : 'iOS 26 Concept UI') : `${documents.length} ${t.docs_loaded}`}
             </p>
           </div>
+          {debugMode && (
+            <div className="text-[10px] font-mono bg-black/80 text-white rounded-lg px-3 py-2 border border-white/10 max-w-xs">
+              <div className="text-emerald-400 font-bold mb-1">🔍 SUPABASE STATUS</div>
+              <div className="space-y-0.5">
+                <div>Init: {window.__SUPABASE_DEBUG__?.initialized ? '✅' : '❌'}</div>
+                <div>Ready: {window.__SUPABASE_DEBUG__?.ready ? '✅' : '❌'}</div>
+                <div>Logs: {window.__SUPABASE_DEBUG__?.logs?.length || 0}</div>
+                <div>Errors: {window.__SUPABASE_DEBUG__?.errors?.length || 0}</div>
+              </div>
+            </div>
+          )}
         </header>
 
         {activeTab === 'chat' ? (

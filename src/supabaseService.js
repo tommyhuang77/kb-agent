@@ -11,19 +11,55 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = 'https://grolfjktzmibeupkqrll.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdyb2xmamt0em1pYmV1cGtxcmxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMTMzMjYsImV4cCI6MjA3MDc4OTMyNn0.4gbWx4wGo0JybfQcvjfNQVbiAGU6DifaMsLU5lG36uU';
 
-let supabase;
+let supabase = null;
+let supabaseError = null;
 
-console.log('🚀 Starting Supabase initialization...');
-console.log('URL:', SUPABASE_URL);
+// 初始化全局診斷對象
+if (!window.__SUPABASE_DEBUG__) {
+  window.__SUPABASE_DEBUG__ = {
+    logs: [],
+    errors: [],
+    initialized: false,
+    ready: false
+  };
+}
+
+const debug = (msg, data = null) => {
+  console.log(msg, data);
+  window.__SUPABASE_DEBUG__.logs.push({ time: new Date().toISOString(), msg, data });
+};
+
+const debugError = (msg, error) => {
+  console.error(msg, error);
+  window.__SUPABASE_DEBUG__.errors.push({ time: new Date().toISOString(), msg, error });
+};
+
+debug('🚀 Starting Supabase initialization');
+debug('URL:', SUPABASE_URL);
+debug('Key exists:', !!SUPABASE_ANON_KEY);
 
 try {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY');
+  }
+  
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  console.log('✅ Supabase initialized successfully');
-  console.log('Supabase object:', supabase);
+  debug('✅ Supabase client created successfully');
+  debug('Type:', typeof supabase);
+  debug('Has channel method:', typeof supabase.channel === 'function');
+  window.__SUPABASE_DEBUG__.initialized = true;
 } catch (error) {
-  console.error('❌ Supabase initialization failed:', error);
-  console.error('Error message:', error.message);
-  console.error('Error stack:', error.stack);
+  supabaseError = error;
+  debugError('❌ Supabase initialization failed', error);
+  window.__SUPABASE_DEBUG__.initialized = false;
+}
+
+if (supabase) {
+  debug('✅ Supabase initialized successfully');
+  window.__SUPABASE_DEBUG__.ready = true;
+} else {
+  debugError('❌ Supabase is null after initialization', supabaseError);
+  window.__SUPABASE_DEBUG__.ready = false;
 }
 
 // 初始化表（自動創建）
