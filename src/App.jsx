@@ -420,39 +420,54 @@ export default function App() {
         console.log('🔄 Initializing Supabase...');
         
         // 檢查 Supabase 是否準備好
-        if (!supabaseService.isSupabaseReady()) {
+        const isReady = supabaseService.isSupabaseReady();
+        console.log('Supabase ready:', isReady);
+        
+        if (!isReady) {
           console.warn('⚠️ Supabase not ready, using localStorage');
+          console.warn('Debug info:', window.__SUPABASE_DEBUG__);
           setSupabaseReady(false);
           return;
         }
         
+        console.log('🔖 Initializing table...');
         // 初始化表
         await supabaseService.initializeTable();
         
+        console.log('📏 Fetching documents...');
         // 獲取文檔
         const docs = await supabaseService.fetchDocuments();
         console.log('📚 Loaded documents from Supabase:', docs);
         
-        if (docs.length > 0) {
+        if (docs && docs.length > 0) {
           setDocuments(docs);
           setSupabaseReady(true);
-          console.log('✅ Supabase loaded successfully');
+          console.log('✅ Supabase loaded successfully with', docs.length, 'docs');
         } else {
           // 如果 Supabase 是空的，從本地存儲加載默認文檔
-          console.log('📝 Supabase is empty, loading from localStorage');
+          console.log('📏 Supabase is empty, loading from localStorage');
           const localDocs = loadDocsFromStorage();
           setDocuments(localDocs);
           setSupabaseReady(true);
+          console.log('✅ Using localStorage with', localDocs.length, 'docs');
         }
         
+        console.log('🗣️ Setting up real-time subscription...');
         // 設置實時訂閱
         const subscription = supabaseService.subscribeToDocuments((updatedDocs) => {
           console.log('🔄 Received real-time update:', updatedDocs);
           setDocuments(updatedDocs);
         });
         subscriptionRef.current = subscription;
+        console.log('✅ Real-time subscription established');
       } catch (error) {
-        console.error('Error initializing Supabase:', error);
+        console.error('❌ Error initializing Supabase:', error);
+        console.error('Error details:', {
+          name: error?.name,
+          message: error?.message,
+          code: error?.code,
+          debugInfo: window.__SUPABASE_DEBUG__
+        });
         setSupabaseReady(false);
       }
     };
