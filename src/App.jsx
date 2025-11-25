@@ -453,13 +453,17 @@ export default function App() {
         }
         
         console.log('🗣️ Setting up real-time subscription...');
-        // 設置實時訂閱
-        const subscription = supabaseService.subscribeToDocuments((updatedDocs) => {
-          console.log('🔄 Received real-time update:', updatedDocs);
-          setDocuments(updatedDocs);
-        });
-        subscriptionRef.current = subscription;
-        console.log('✅ Real-time subscription established');
+        // 設置實時訂閱 (一暬禁用以解決 port 錯誤)
+        try {
+          const subscription = supabaseService.subscribeToDocuments((updatedDocs) => {
+            console.log('🔄 Received real-time update:', updatedDocs);
+            setDocuments(updatedDocs);
+          });
+          subscriptionRef.current = subscription;
+          console.log('✅ Real-time subscription established');
+        } catch (subError) {
+          console.warn('⚠️ Real-time subscription failed, continuing without it:', subError);
+        }
       } catch (error) {
         console.error('❌ Error initializing Supabase:', error);
         console.error('Error details:', {

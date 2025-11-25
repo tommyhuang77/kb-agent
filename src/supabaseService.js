@@ -120,37 +120,51 @@ export const subscribeToDocuments = (callback) => {
   }
 
   try {
+    debug('🗣️ Creating channel for real-time updates');
+    
     const subscription = supabase
-      .channel('documents_channel')
+      .channel('documents_channel', { 
+        config: { 
+          broadcast: { self: true }
+        } 
+      })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'documents' },
         (payload) => {
-          console.log('📡 Document changed:', payload);
+          debug('📡 Document changed:', payload);
           // 重新獲取所有文檔
           fetchDocuments().then(callback);
         }
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Subscribed to documents');
+          debug('✅ Subscribed to documents channel');
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Channel error:', err);
+          debugError('❌ Channel error', err);
         } else if (status === 'TIMED_OUT') {
-          console.warn('⏱️ Subscription timeout');
+          debug('⏱️ Subscription timeout');
         }
       });
+
+    debug('🗣️ Subscription object created');
 
     // 返回帶有 unsubscribe 方法的物件
     return {
       unsubscribe: async () => {
-        console.log('🔕 Unsubscribing from documents');
-        await supabase.removeChannel(subscription);
+        try {
+          debug('🔕 Unsubscribing from documents');
+          if (subscription) {
+            await subscription.unsubscribe?.();
+          }
+        } catch (e) {
+          debugError('Error unsubscribing', e);
+        }
       },
       channel: subscription
     };
   } catch (error) {
-    console.error('Error subscribing to documents:', error);
+    debugError('Error subscribing to documents', error);
     return null;
   }
 };
