@@ -84,14 +84,29 @@ export const subscribeToDocuments = (callback) => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'documents' },
         (payload) => {
-          console.log('Document changed:', payload);
+          console.log('📡 Document changed:', payload);
           // 重新獲取所有文檔
           fetchDocuments().then(callback);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Subscribed to documents');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Channel error:', err);
+        } else if (status === 'TIMED_OUT') {
+          console.warn('⏱️ Subscription timeout');
+        }
+      });
 
-    return subscription;
+    // 返回帶有 unsubscribe 方法的物件
+    return {
+      unsubscribe: async () => {
+        console.log('🔕 Unsubscribing from documents');
+        await supabase.removeChannel(subscription);
+      },
+      channel: subscription
+    };
   } catch (error) {
     console.error('Error subscribing to documents:', error);
     return null;

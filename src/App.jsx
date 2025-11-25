@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import * as supabaseService from './supabaseService';
 import { 
   BookOpen, 
   MessageSquare, 
@@ -403,17 +404,88 @@ export default function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newDocTitle, setNewDocTitle] = useState('');
   const [newDocContent, setNewDocContent] = useState('');
+  const [supabaseReady, setSupabaseReady] = useState(false);
   
   // V14: 語言狀態
   const [lang, setLang] = useState('zh-TW'); // 'zh-TW' or 'en'
   const t = TRANSLATIONS[lang]; // 便捷存取函數
 
   const messagesEndRef = useRef(null);
+  const subscriptionRef = useRef(null);
 
-  // 當 documents 改變時，保存到 localStorage
+  // 初始化 Supabase 並加載文檔
   useEffect(() => {
+    const initSupabase = async () => {
+      try {
+        console.log('🔄 Initializing Supabase...');
+        
+        // 檢查 Supabase 是否準備好
+        if (!supabaseService.isSupabaseReady()) {
+          console.warn('⚠️ Supabase not ready, using localStorage');
+          setSupabaseReady(false);
+          return;
+        }
+        
+        // 初始化表
+        await supabaseService.initializeTable();
+        
+        // 獲取文檔
+        const docs = await supabaseService.fetchDocuments();
+        console.log('📚 Loaded documents from Supabase:', docs);
+        
+        if (docs.length > 0) {
+          setDocuments(docs);
+          setSupabaseReady(true);
+          console.log('✅ Supabase loaded successfully');
+        } else {
+          // 如果 Supabase 是空的，從本地存儲加載默認文檔
+          console.log('📝 Supabase is empty, loading from localStorage');
+          const localDocs = loadDocsFromStorage();
+          setDocuments(localDocs);
+          setSupabaseReady(true);
+        }
+        
+        // 設置實時訂閱
+        const subscription = supabaseService.subscribeToDocuments((updatedDocs) => {
+          console.log('🔄 Received real-time update:', updatedDocs);
+          setDocuments(updatedDocs);
+        });
+        subscriptionRef.current = subscription;
+      } catch (error) {
+        console.error('Error initializing Supabase:', error);
+        setSupabaseReady(false);
+      }
+    };
+    
+    initSupabase();
+    
+    return () => {
+      // 清理訂閱
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe?.();
+      }
+    };
+  }, []);
+
+  // 當 documents 改變時，保存到 Supabase 和 localStorage
+  useEffect(() => {
+    if (!documents || documents.length === 0) return;
+    
+    // 保存到 localStorage（備份）
     saveDocsToStorage(documents);
-  }, [documents]);
+    
+    // 如果 Supabase 準備好了，同步新增/更新的文檔
+    if (supabaseReady) {
+      documents.forEach(doc => {
+        // 只保存本地新增的文檔（id 是時間戳）
+        if (doc.id.length > 10) { // 時間戳會很長
+          supabaseService.saveDocument(doc).catch(err => {
+            console.error('Error saving document to Supabase:', err);
+          });
+        }
+      });
+    }
+  }, [documents, supabaseReady]);
 
   // 初始化與語言變更時更新歡迎訊息
   useEffect(() => {
@@ -488,20 +560,46 @@ export default function App() {
     }, 800);
   };
 
-  const handleAddDocument = () => {
+  const handleAddDocument = async () => {
     if (!newDocTitle.trim() || !newDocContent.trim()) return;
-    setDocuments([...documents, {
+    
+    const newDoc = {
       id: Date.now().toString(),
       title: newDocTitle,
       content: newDocContent
-    }]);
+    };
+    
+    // 立即更新本地狀態
+    setDocuments([...documents, newDoc]);
+    
+    // 同步到 Supabase
+    if (supabaseReady) {
+      try {
+        await supabaseService.saveDocument(newDoc);
+        console.log('✅ Document saved to Supabase:', newDoc.id);
+      } catch (error) {
+        console.error('Error saving to Supabase:', error);
+      }
+    }
+    
     setNewDocTitle('');
     setNewDocContent('');
     setShowAddModal(false);
   };
 
-  const handleDeleteDocument = (id) => {
+  const handleDeleteDocument = async (id) => {
+    // 立即更新本地狀態
     setDocuments(documents.filter(doc => doc.id !== id));
+    
+    // 從 Supabase 刪除
+    if (supabaseReady) {
+      try {
+        await supabaseService.deleteDocument(id);
+        console.log('✅ Document deleted from Supabase:', id);
+      } catch (error) {
+        console.error('Error deleting from Supabase:', error);
+      }
+    }
   };
 
   return (
