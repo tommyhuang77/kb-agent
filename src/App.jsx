@@ -452,18 +452,23 @@ export default function App() {
           console.log('✅ Using localStorage with', localDocs.length, 'docs');
         }
         
-        console.log('🗣️ Setting up real-time subscription...');
-        // 設置實時訂閱 (一暬禁用以解決 port 錯誤)
-        try {
-          const subscription = supabaseService.subscribeToDocuments((updatedDocs) => {
-            console.log('🔄 Received real-time update:', updatedDocs);
-            setDocuments(updatedDocs);
-          });
-          subscriptionRef.current = subscription;
-          console.log('✅ Real-time subscription established');
-        } catch (subError) {
-          console.warn('⚠️ Real-time subscription failed, continuing without it:', subError);
-        }
+        console.log('🗣️ Setting up periodic polling...');
+        // 設置輮詢機制（比實時訂閱更穩定）
+        const pollInterval = setInterval(async () => {
+          try {
+            const latestDocs = await supabaseService.fetchDocuments();
+            // 只有當文檔粗及整數控不同時才更新
+            if (JSON.stringify(latestDocs) !== JSON.stringify(documents)) {
+              console.log('🔄 Detected document changes via polling');
+              setDocuments(latestDocs);
+            }
+          } catch (err) {
+            console.warn('⚠️ Polling error:', err);
+          }
+        }, 5000); // 每 5 秒輮詢一次
+        
+        subscriptionRef.current = { unsubscribe: () => clearInterval(pollInterval) };
+        console.log('✅ Polling established');
       } catch (error) {
         console.error('❌ Error initializing Supabase:', error);
         console.error('Error details:', {
