@@ -1,5 +1,7 @@
 // Supabase 服務層 - PostgreSQL 數據庫集成
+console.log('📦 supabaseService.js module loading...');
 import { createClient } from '@supabase/supabase-js';
+console.log('📦 @supabase/supabase-js imported');
 
 // ⚠️ 重要：替換為你的 Supabase 專案信息
 // 步驟：
