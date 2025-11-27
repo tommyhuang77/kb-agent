@@ -1,7 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import * as supabaseService from './supabaseService';
+// 暫時禁用 Supabase，直到找到根本問題
+// import * as supabaseService from './supabaseService';
 
-console.log('🚀 App.jsx loading with Supabase enabled');
+console.log('🚀 App.jsx loading - Supabase disabled until issue resolved');
+
+// Mock service
+const supabaseService = {
+  isSupabaseReady: () => false,
+  initializeTable: async () => false,
+  fetchDocuments: async () => [],
+  saveDocument: async () => false,
+  deleteDocument: async () => false
+};
 import { 
   BookOpen, 
   MessageSquare, 
@@ -419,7 +429,7 @@ export default function App() {
   useEffect(() => {
     const initSupabase = async () => {
       try {
-        console.log('🔄 Initializing Supabase...');
+        console.log('🔄 Initializing Supabase... (currently disabled)');
         
         // 檢查 Supabase 是否準備好
         const isReady = supabaseService.isSupabaseReady();
