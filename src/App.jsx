@@ -1,5 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import * as supabaseService from './supabaseService';
+// import * as supabaseService from './supabaseService';
+
+console.log('🚀 App.jsx loading - Supabase temporarily disabled for testing');
+
+// Mock Supabase service
+const supabaseService = {
+  isSupabaseReady: () => false,
+  initializeTable: async () => false,
+  fetchDocuments: async () => [],
+  saveDocument: async () => false,
+  deleteDocument: async () => false
+};
 import { 
   BookOpen, 
   MessageSquare, 
