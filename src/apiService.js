@@ -3,7 +3,7 @@ console.log('📡 apiService.js loading...');
 
 // API 基礎 URL - 根據環境自動切換
 const API_BASE_URL = import.meta.env.PROD 
-  ? 'https://kb-agent-backend-production.up.railway.app'  // 生產環境（稍後部署後更新）
+  ? 'https://glorious-reprieve-production.up.railway.app'  // Railway 後端
   : 'http://localhost:3001';  // 開發環境
 
 console.log('🌐 API Base URL:', API_BASE_URL);
