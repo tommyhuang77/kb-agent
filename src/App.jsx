@@ -1,17 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-// 暫時禁用 Supabase，直到找到根本問題
-// import * as supabaseService from './supabaseService';
+import * as apiService from './apiService';
 
-console.log('🚀 App.jsx loading - Supabase disabled until issue resolved');
-
-// Mock service
-const supabaseService = {
-  isSupabaseReady: () => false,
-  initializeTable: async () => false,
-  fetchDocuments: async () => [],
-  saveDocument: async () => false,
-  deleteDocument: async () => false
-};
+console.log('🚀 App.jsx loading with Express backend');
 import { 
   BookOpen, 
   MessageSquare, 
@@ -416,7 +406,7 @@ export default function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newDocTitle, setNewDocTitle] = useState('');
   const [newDocContent, setNewDocContent] = useState('');
-  const [supabaseReady, setSupabaseReady] = useState(false);
+  const [apiReady, setApiReady] = useState(false);
   
   // V14: 語言狀態
   const [lang, setLang] = useState('zh-TW'); // 'zh-TW' or 'en'
@@ -425,75 +415,58 @@ export default function App() {
   const messagesEndRef = useRef(null);
   const subscriptionRef = useRef(null);
 
-  // 初始化 Supabase 並加載文檔
+  // 初始化 API 並加載文檔
   useEffect(() => {
-    const initSupabase = async () => {
+    const initApi = async () => {
       try {
-        console.log('🔄 Initializing Supabase... (currently disabled)');
+        console.log('🔄 Initializing API backend...');
         
-        // 檢查 Supabase 是否準備好
-        const isReady = supabaseService.isSupabaseReady();
-        console.log('Supabase ready:', isReady);
+        // 檢查後端健康狀態
+        const isHealthy = await apiService.checkHealth();
+        console.log('Backend healthy:', isHealthy);
         
-        if (!isReady) {
-          console.warn('⚠️ Supabase not ready, using localStorage');
-          console.warn('Debug info:', window.__SUPABASE_DEBUG__);
-          setSupabaseReady(false);
-          return;
-        }
-        
-        console.log('🔖 Initializing table...');
-        // 初始化表
-        await supabaseService.initializeTable();
-        
-        console.log('📏 Fetching documents...');
-        // 獲取文檔
-        const docs = await supabaseService.fetchDocuments();
-        console.log('📚 Loaded documents from Supabase:', docs);
+        console.log('📏 Fetching documents from API...');
+        const docs = await apiService.fetchDocuments();
+        console.log('📚 Loaded documents from API:', docs);
         
         if (docs && docs.length > 0) {
           setDocuments(docs);
-          setSupabaseReady(true);
-          console.log('✅ Supabase loaded successfully with', docs.length, 'docs');
+          setApiReady(true);
+          console.log('✅ API loaded successfully with', docs.length, 'docs');
         } else {
-          // 如果 Supabase 是空的，從本地存儲加載默認文檔
-          console.log('📏 Supabase is empty, loading from localStorage');
+          // 如果 API 返回空，從本地存儲加載
+          console.log('📏 API returned empty, loading from localStorage');
           const localDocs = loadDocsFromStorage();
           setDocuments(localDocs);
-          setSupabaseReady(true);
-          console.log('✅ Using localStorage with', localDocs.length, 'docs');
+          setApiReady(false);  // API 連接失敗
+          console.log('⚠️ Using localStorage with', localDocs.length, 'docs');
         }
         
         console.log('🗣️ Setting up periodic polling...');
-        // 設置輮詢機制（比實時訂閱更穩定）
         const pollInterval = setInterval(async () => {
           try {
-            const latestDocs = await supabaseService.fetchDocuments();
-            // 只有當文檔粗及整數控不同時才更新
-            if (JSON.stringify(latestDocs) !== JSON.stringify(documents)) {
+            const latestDocs = await apiService.fetchDocuments();
+            if (latestDocs.length > 0 && JSON.stringify(latestDocs) !== JSON.stringify(documents)) {
               console.log('🔄 Detected document changes via polling');
               setDocuments(latestDocs);
             }
           } catch (err) {
             console.warn('⚠️ Polling error:', err);
           }
-        }, 5000); // 每 5 秒輮詢一次
+        }, 5000);
         
         subscriptionRef.current = { unsubscribe: () => clearInterval(pollInterval) };
         console.log('✅ Polling established');
       } catch (error) {
-        console.error('❌ Error initializing Supabase:', error);
-        console.error('Error details:', {
-          name: error?.name,
-          message: error?.message,
-          code: error?.code,
-          debugInfo: window.__SUPABASE_DEBUG__
-        });
-        setSupabaseReady(false);
+        console.error('❌ Error initializing API:', error);
+        setApiReady(false);
+        // 回退到 localStorage
+        const localDocs = loadDocsFromStorage();
+        setDocuments(localDocs);
       }
     };
     
-    initSupabase();
+    initApi();
     
     return () => {
       // 清理訂閱
@@ -503,25 +476,11 @@ export default function App() {
     };
   }, []);
 
-  // 當 documents 改變時，保存到 Supabase 和 localStorage
+  // 當 documents 改變時，保存到 localStorage
   useEffect(() => {
     if (!documents || documents.length === 0) return;
-    
-    // 保存到 localStorage（備份）
     saveDocsToStorage(documents);
-    
-    // 如果 Supabase 準備好了，同步新增/更新的文檔
-    if (supabaseReady) {
-      documents.forEach(doc => {
-        // 只保存本地新增的文檔（id 是時間戳）
-        if (doc.id.length > 10) { // 時間戳會很長
-          supabaseService.saveDocument(doc).catch(err => {
-            console.error('Error saving document to Supabase:', err);
-          });
-        }
-      });
-    }
-  }, [documents, supabaseReady]);
+  }, [documents]);
 
   // 初始化與語言變更時更新歡迎訊息
   useEffect(() => {
@@ -608,13 +567,13 @@ export default function App() {
     // 立即更新本地狀態
     setDocuments([...documents, newDoc]);
     
-    // 同步到 Supabase
-    if (supabaseReady) {
+    // 同步到後端
+    if (apiReady) {
       try {
-        await supabaseService.saveDocument(newDoc);
-        console.log('✅ Document saved to Supabase:', newDoc.id);
+        await apiService.saveDocument(newDoc);
+        console.log('✅ Document saved to backend:', newDoc.id);
       } catch (error) {
-        console.error('Error saving to Supabase:', error);
+        console.error('Error saving to backend:', error);
       }
     }
     
@@ -627,13 +586,13 @@ export default function App() {
     // 立即更新本地狀態
     setDocuments(documents.filter(doc => doc.id !== id));
     
-    // 從 Supabase 刪除
-    if (supabaseReady) {
+    // 從後端刪除
+    if (apiReady) {
       try {
-        await supabaseService.deleteDocument(id);
-        console.log('✅ Document deleted from Supabase:', id);
+        await apiService.deleteDocument(id);
+        console.log('✅ Document deleted from backend:', id);
       } catch (error) {
-        console.error('Error deleting from Supabase:', error);
+        console.error('Error deleting from backend:', error);
       }
     }
   };
@@ -685,9 +644,9 @@ export default function App() {
             onClick={() => {
               setDebugMode(!debugMode);
               if (!debugMode) {
-                console.log('🔍 Debug Info:', window.__SUPABASE_DEBUG__);
+                console.log('🔍 Debug Info - API Ready:', apiReady);
               }
-            }} 
+            }}
             className={`p-3 rounded-full transition-all duration-300 ${debugMode ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-400 hover:bg-white/50'}`}
             title="Debug Mode"
           >
@@ -704,8 +663,8 @@ export default function App() {
             <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3 tracking-tight">
               {activeTab === 'chat' ? t.app_chat_title : t.app_kb_title}
               <span className="text-[10px] font-bold px-2 py-1 bg-white/60 backdrop-blur text-slate-500 rounded-full border border-white/50 shadow-sm">{t.app_version}</span>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-full border shadow-sm ${supabaseReady ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-                DB: {supabaseReady ? 'Supabase' : 'Local'}
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-full border shadow-sm ${apiReady ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
+                DB: {apiReady ? 'API' : 'Local'}
               </span>
             </h1>
             <p className="text-xs font-medium text-slate-400 mt-1 ml-1">
@@ -714,12 +673,11 @@ export default function App() {
           </div>
           {debugMode && (
             <div className="text-[10px] font-mono bg-black/80 text-white rounded-lg px-3 py-2 border border-white/10 max-w-xs">
-              <div className="text-emerald-400 font-bold mb-1">🔍 SUPABASE STATUS</div>
+              <div className="text-emerald-400 font-bold mb-1">🔍 BACKEND STATUS</div>
               <div className="space-y-0.5">
-                <div>Init: {window.__SUPABASE_DEBUG__?.initialized ? '✅' : '❌'}</div>
-                <div>Ready: {window.__SUPABASE_DEBUG__?.ready ? '✅' : '❌'}</div>
-                <div>Logs: {window.__SUPABASE_DEBUG__?.logs?.length || 0}</div>
-                <div>Errors: {window.__SUPABASE_DEBUG__?.errors?.length || 0}</div>
+                <div>API Ready: {apiReady ? '✅' : '❌'}</div>
+                <div>Documents: {documents.length}</div>
+                <div>Mode: {apiReady ? 'Multi-user' : 'Local'}</div>
               </div>
             </div>
           )}
