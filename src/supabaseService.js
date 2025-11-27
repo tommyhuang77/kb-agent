@@ -14,24 +14,35 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let supabase = null;
 let supabaseError = null;
 
-// 初始化全局診斷對象
-if (!window.__SUPABASE_DEBUG__) {
-  window.__SUPABASE_DEBUG__ = {
-    logs: [],
-    errors: [],
-    initialized: false,
-    ready: false
-  };
-}
-
+// 安全的 debug 函數，不依賴 window 對象
 const debug = (msg, data = null) => {
   console.log(msg, data);
-  window.__SUPABASE_DEBUG__.logs.push({ time: new Date().toISOString(), msg, data });
+  if (typeof window !== 'undefined') {
+    if (!window.__SUPABASE_DEBUG__) {
+      window.__SUPABASE_DEBUG__ = {
+        logs: [],
+        errors: [],
+        initialized: false,
+        ready: false
+      };
+    }
+    window.__SUPABASE_DEBUG__.logs.push({ time: new Date().toISOString(), msg, data });
+  }
 };
 
 const debugError = (msg, error) => {
   console.error(msg, error);
-  window.__SUPABASE_DEBUG__.errors.push({ time: new Date().toISOString(), msg, error });
+  if (typeof window !== 'undefined') {
+    if (!window.__SUPABASE_DEBUG__) {
+      window.__SUPABASE_DEBUG__ = {
+        logs: [],
+        errors: [],
+        initialized: false,
+        ready: false
+      };
+    }
+    window.__SUPABASE_DEBUG__.errors.push({ time: new Date().toISOString(), msg, error });
+  }
 };
 
 debug('🚀 Starting Supabase initialization');
@@ -47,19 +58,27 @@ try {
   debug('✅ Supabase client created successfully');
   debug('Type:', typeof supabase);
   debug('Has channel method:', typeof supabase.channel === 'function');
-  window.__SUPABASE_DEBUG__.initialized = true;
+  if (typeof window !== 'undefined' && window.__SUPABASE_DEBUG__) {
+    window.__SUPABASE_DEBUG__.initialized = true;
+  }
 } catch (error) {
   supabaseError = error;
   debugError('❌ Supabase initialization failed', error);
-  window.__SUPABASE_DEBUG__.initialized = false;
+  if (typeof window !== 'undefined' && window.__SUPABASE_DEBUG__) {
+    window.__SUPABASE_DEBUG__.initialized = false;
+  }
 }
 
 if (supabase) {
   debug('✅ Supabase initialized successfully');
-  window.__SUPABASE_DEBUG__.ready = true;
+  if (typeof window !== 'undefined' && window.__SUPABASE_DEBUG__) {
+    window.__SUPABASE_DEBUG__.ready = true;
+  }
 } else {
   debugError('❌ Supabase is null after initialization', supabaseError);
-  window.__SUPABASE_DEBUG__.ready = false;
+  if (typeof window !== 'undefined' && window.__SUPABASE_DEBUG__) {
+    window.__SUPABASE_DEBUG__.ready = false;
+  }
 }
 
 // 初始化表（自動創建）
