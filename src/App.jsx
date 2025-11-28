@@ -516,8 +516,11 @@ export default function App() {
   useEffect(() => {
     let allChunks = [];
     documents.forEach(doc => {
-      allChunks = [...allChunks, ...chunkDocument(doc.id, doc.title, doc.content)];
+      const docChunks = chunkDocument(doc.id, doc.title, doc.content);
+      console.log(`📦 Document "${doc.title}" generated ${docChunks.length} chunks`);
+      allChunks = [...allChunks, ...docChunks];
     });
+    console.log(`📊 Total chunks in memory: ${allChunks.length}`);
     setChunks(allChunks);
   }, [documents]);
 
@@ -542,7 +545,13 @@ export default function App() {
     setIsTyping(true);
 
     setTimeout(() => {
+      console.log(`🔍 Searching for: "${userMsg.content}" in ${chunks.length} chunks`);
       const results = sniperSearch(userMsg.content, chunks);
+      console.log(`🎯 Search results: ${results.length} matches`);
+      if (results.length > 0) {
+        console.log('Top 3 results:', results.slice(0, 3).map(r => ({ title: r.chunkTitle, score: r.score })));
+      }
+      
       let relevantChunks = [];
       let debugInfo = null;
 

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Search Logic Test</title>
+</head>
+<body>
+  <h1>搜索邏輯測試</h1>
+  <div id="output"></div>
+  
+  <script>
+    const SIMP_TRAD_MAP = {
+      '产': '產', '品': '品', '质': '質', '量': '量', '依': '依', '据': '據', 
+      '发': '發', '现': '現', '程': '程', '度': '度', '问': '問', '题': '題',
+      '实': '實', '际': '際', '样': '樣', '本': '本', '书': '書', '记': '記',
+      '录': '錄', '准': '準', '备': '備', '确': '確', '认': '認', '货': '貨',
+      '运': '運', '输': '輸', '长': '長', '期': '期', '车': '車', '间': '間',
+      '应': '應', '该': '該', '对': '對', '开': '開', '关': '關', '系': '係',
+      '气': '氣', '两': '兩', '严': '嚴', '格': '格', '报': '報', '告': '告',
+      '务': '務', '员': '員', '个': '個', '体': '體', '表': '表', '面': '面',
+      '制': '製', '造': '造', '码': '碼', '专': '專', '业': '業', '项': '項',
+      '么': '麼', '什': '甚', '范': '範', '规': '規', '划': '劃',
+      // 新增：培训相關
+      '培': '培', '训': '訓', '学': '學', '习': '習', '练': '練',
+      // 新增：常用字
+      '检': '檢', '验': '驗', '测': '測', '试': '試', '标': '標', '查': '查',
+      '过': '過', '处': '處', '理': '理', '时': '時', '术': '術', '技': '技',
+      '线': '線', '号': '號', '单': '單', '组': '組', '织': '織', '设': '設',
+      '计': '計', '资': '資', '料': '料', '档': '檔', '案': '案', '库': '庫',
+      '区': '區', '环': '環', '境': '境', '场': '場', '险': '險',
+      '层': '層', '级': '級', '变': '變', '换': '換', '转': '轉', '态': '態'
+    };
+
+    const STOP_WORDS = new Set([
+      '什麼', '什么', '是', '的', '嗎', '吗', '怎麼', '怎么', '如何', '為', '为', '了', '?', '？', '能', '不能', '有', '沒有', '没有', '我', '想', '問', '问', '有哪些', '哪些', '關於', '关于', '包含', '包括'
+    ]);
+
+    const createFlexibleRegex = (text) => {
+      let pattern = '';
+      for (let char of text) {
+        if (/[a-zA-Z0-9]/.test(char)) {
+          pattern += char; 
+        } else {
+          const trad = SIMP_TRAD_MAP[char]; 
+          const reverseKey = Object.keys(SIMP_TRAD_MAP).find(k => SIMP_TRAD_MAP[k] === char); 
+          
+          if (trad) pattern += `(${char}|${trad})`;
+          else if (reverseKey) pattern += `(${char}|${reverseKey})`;
+          else pattern += char; 
+        }
+      }
+      return new RegExp(pattern, 'gi');
+    };
+
+    // 測試數據
+    const testDoc = {
+      docTitle: "QIP 培训 (Quality Improvement Process Training)",
+      chunkTitle: "品质管理基础",
+      content: "品质管理是指通过一系列系统的活动...",
+      rawText: "QIP 培训 > 品质管理基础\n品质管理是指通过一系列系统的活动..."
+    };
+
+    const testQueries = [
+      "培训",
+      "培訓", 
+      "QIP",
+      "品质",
+      "品質",
+      "什么是品质管理"
+    ];
+
+    let output = '<h2>測試結果</h2>';
+    
+    testQueries.forEach(query => {
+      output += `<h3>查詢: "${query}"</h3>`;
+      
+      // 清理查詢
+      const cleanQuery = query.replace(/[^\w\u4e00-\u9fa5]/g, '');
+      const tokens = [];
+      for(let char of cleanQuery) {
+        if (!STOP_WORDS.has(char)) tokens.push(char);
+      }
+      const effectiveQuery = tokens.join('');
+      
+      output += `<p>清理後: "${cleanQuery}" → 有效查詢: "${effectiveQuery}"</p>`;
+      
+      if (effectiveQuery.length === 0) {
+        output += `<p style="color: red;">❌ 查詢被停用詞過濾掉了</p>`;
+      } else {
+        const regex = createFlexibleRegex(effectiveQuery);
+        output += `<p>正則表達式: <code>${regex.source}</code></p>`;
+        
+        // 測試匹配
+        const titleMatch = regex.test(testDoc.docTitle);
+        const contentMatch = new RegExp(regex.source, 'gi').test(testDoc.content);
+        
+        output += `<p>標題匹配: ${titleMatch ? '✅' : '❌'}</p>`;
+        output += `<p>內容匹配: ${contentMatch ? '✅' : '❌'}</p>`;
+      }
+      
+      output += '<hr>';
+    });
+    
+    document.getElementById('output').innerHTML = output;
+  </script>
+</body>
+</html>
