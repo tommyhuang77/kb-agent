@@ -184,12 +184,17 @@ const chunkDocument = (docId, docTitle, content) => {
 };
 
 const sniperSearch = (query, allChunks) => {
-  const cleanQuery = query.replace(/[^\w\u4e00-\u9fa5]/g, '');
-  const tokens = [];
-  for(let char of cleanQuery) {
-    if (!STOP_WORDS.has(char)) tokens.push(char);
-  }
-  const effectiveQuery = tokens.join('');
+  // 第一步：移除停用詞片段（先處理多字詞）
+  let cleanQuery = query;
+  STOP_WORDS.forEach(stopWord => {
+    const regex = new RegExp(stopWord, 'g');
+    cleanQuery = cleanQuery.replace(regex, ' ');
+  });
+  
+  // 第二步：清理特殊字元和多餘空格
+  cleanQuery = cleanQuery.replace(/[^\w\u4e00-\u9fa5]/g, '').trim();
+  
+  const effectiveQuery = cleanQuery;
   
   if (effectiveQuery.length === 0) return [];
 
