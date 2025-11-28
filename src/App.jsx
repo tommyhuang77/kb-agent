@@ -187,7 +187,9 @@ const sniperSearch = (query, allChunks) => {
   // 第一步：移除停用詞片段（先處理多字詞）
   let cleanQuery = query;
   STOP_WORDS.forEach(stopWord => {
-    const regex = new RegExp(stopWord, 'g');
+    // 轉義正則表達式特殊字符
+    const escapedWord = stopWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedWord, 'g');
     cleanQuery = cleanQuery.replace(regex, ' ');
   });
   
