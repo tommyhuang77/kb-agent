@@ -442,21 +442,26 @@ export default function App() {
           console.log('⚠️ Using localStorage with', localDocs.length, 'docs');
         }
         
-        console.log('🗣️ Setting up periodic polling...');
-        const pollInterval = setInterval(async () => {
-          try {
-            const latestDocs = await apiService.fetchDocuments();
-            if (latestDocs.length > 0 && JSON.stringify(latestDocs) !== JSON.stringify(documents)) {
-              console.log('🔄 Detected document changes via polling');
-              setDocuments(latestDocs);
+        // 只有當 API 成功連接時才啟用輮詢
+        if (apiReady) {
+          console.log('🗣️ Setting up periodic polling...');
+          const pollInterval = setInterval(async () => {
+            try {
+              const latestDocs = await apiService.fetchDocuments();
+              if (latestDocs.length > 0 && JSON.stringify(latestDocs) !== JSON.stringify(documents)) {
+                console.log('🔄 Detected document changes via polling');
+                setDocuments(latestDocs);
+              }
+            } catch (err) {
+              console.warn('⚠️ Polling error:', err);
             }
-          } catch (err) {
-            console.warn('⚠️ Polling error:', err);
-          }
-        }, 5000);
-        
-        subscriptionRef.current = { unsubscribe: () => clearInterval(pollInterval) };
-        console.log('✅ Polling established');
+          }, 5000);
+          
+          subscriptionRef.current = { unsubscribe: () => clearInterval(pollInterval) };
+          console.log('✅ Polling established');
+        } else {
+          console.log('⚠️ API not ready, polling disabled. Using localStorage only.');
+        }
       } catch (error) {
         console.error('❌ Error initializing API:', error);
         setApiReady(false);
