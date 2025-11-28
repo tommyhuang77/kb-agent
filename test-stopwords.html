@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>停用詞測試</title>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    .result { background: #f5f5f5; padding: 10px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>停用詞過濾測試</h1>
+  <div id="output"></div>
+  
+  <script>
+    const STOP_WORDS = new Set([
+      '什麼', '什么', '是', '的', '嗎', '吗', '怎麼', '怎么', '如何', '為', '为', '了', '?', '？', '能', '不能', '有', '沒有', '没有', '我', '想', '問', '问', '有哪些', '哪些', '關於', '关于', '包含', '包括'
+    ]);
+
+    function processQuery(query) {
+      let cleanQuery = query;
+      STOP_WORDS.forEach(stopWord => {
+        const escapedWord = stopWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedWord, 'g');
+        cleanQuery = cleanQuery.replace(regex, ' ');
+      });
+      cleanQuery = cleanQuery.replace(/[^\w\u4e00-\u9fa5]/g, '').trim();
+      return cleanQuery;
+    }
+
+    const testQueries = [
+      '生產依據',
+      '生產依據是什麼',
+      '生產依據哪些項目',
+      '生產的主要依據有哪些',
+      '什么是品质管理',
+      '品质管理'
+    ];
+
+    let output = '<h2>測試結果</h2>';
+    testQueries.forEach(query => {
+      const result = processQuery(query);
+      output += `<div class="result">
+        <strong>原始查詢:</strong> ${query}<br>
+        <strong>處理後:</strong> ${result}<br>
+        <strong>長度:</strong> ${result.length}
+      </div>`;
+    });
+
+    output += '<hr><h2>文檔中的相關標題</h2>';
+    output += '<div class="result">生产的主要依据有哪些？</div>';
+    output += '<div class="result">生产依据与规范</div>';
+
+    document.getElementById('output').innerHTML = output;
+  </script>
+</body>
+</html>

@@ -200,10 +200,9 @@ const sniperSearch = (query, allChunks) => {
   
   if (effectiveQuery.length === 0) return [];
 
-  // 第一階段：尋找完全匹配
+  // 第一階段：標題精確匹配
   const perfectMatches = allChunks.filter(chunk => {
     const regex = createFlexibleRegex(effectiveQuery);
-    // 只在文件標題或 chunk 標題中尋找完全匹配
     const docTitleMatch = regex.test(chunk.docTitle);
     const chunkTitleMatch = regex.test(chunk.chunkTitle);
     return docTitleMatch || chunkTitleMatch;
@@ -213,12 +212,45 @@ const sniperSearch = (query, allChunks) => {
     return perfectMatches.map(chunk => {
         let score = 1000; 
         const regex = createFlexibleRegex(effectiveQuery);
-        // 如果在內容中也找到，加分
         if (regex.test(chunk.content)) score += 500;
-        // 如果在 chunk 標題中（比文件標題更精確）
         if (regex.test(chunk.chunkTitle)) score += 300;
         return { ...chunk, score, debug: { method: 'Title Sniper', exact: true } };
     }).sort((a, b) => b.score - a.score);
+  }
+  
+  // 第二階段：部分匹配（拆分查詢詞）
+  if (effectiveQuery.length >= 4) {
+    const partialMatches = [];
+    
+    // 嘗試提取核心關鍵詞（至少 2 個字）
+    for (let len = Math.min(effectiveQuery.length, 6); len >= 2; len--) {
+      for (let i = 0; i <= effectiveQuery.length - len; i++) {
+        const keyword = effectiveQuery.substring(i, i + len);
+        const regex = createFlexibleRegex(keyword);
+        
+        allChunks.forEach(chunk => {
+          const titleMatch = regex.test(chunk.chunkTitle) || regex.test(chunk.docTitle);
+          const contentMatch = regex.test(chunk.content);
+          
+          if (titleMatch || contentMatch) {
+            const existingMatch = partialMatches.find(m => m.id === chunk.id);
+            if (existingMatch) {
+              existingMatch.score += (titleMatch ? 100 : 50) * len;
+            } else {
+              partialMatches.push({
+                ...chunk,
+                score: (titleMatch ? 100 : 50) * len,
+                debug: { method: 'Partial Match', keyword, length: len }
+              });
+            }
+          }
+        });
+      }
+    }
+    
+    if (partialMatches.length > 0) {
+      return partialMatches.sort((a, b) => b.score - a.score).slice(0, 5);
+    }
   }
 
   // 第二階段：內容匹配
