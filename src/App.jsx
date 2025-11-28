@@ -433,24 +433,21 @@ export default function App() {
           setDocuments(docs);
           setApiReady(true);
           console.log('✅ API loaded successfully with', docs.length, 'docs');
-        } else {
-          // 如果 API 返回空，從本地存儲加載
-          console.log('📏 API returned empty, loading from localStorage');
-          const localDocs = loadDocsFromStorage();
-          setDocuments(localDocs);
-          setApiReady(false);  // API 連接失敗
-          console.log('⚠️ Using localStorage with', localDocs.length, 'docs');
-        }
-        
-        // 只有當 API 成功連接時才啟用輮詢
-        if (apiReady) {
+          
+          // 設置輪詢（必須在成功後立即設置，而不是檢查舊的 apiReady）
           console.log('🗣️ Setting up periodic polling...');
           const pollInterval = setInterval(async () => {
             try {
               const latestDocs = await apiService.fetchDocuments();
-              if (latestDocs.length > 0 && JSON.stringify(latestDocs) !== JSON.stringify(documents)) {
-                console.log('🔄 Detected document changes via polling');
-                setDocuments(latestDocs);
+              if (latestDocs.length > 0) {
+                setDocuments(prevDocs => {
+                  // 只有在真的有變化時才更新
+                  if (JSON.stringify(latestDocs) !== JSON.stringify(prevDocs)) {
+                    console.log('🔄 Detected document changes via polling');
+                    return latestDocs;
+                  }
+                  return prevDocs;
+                });
               }
             } catch (err) {
               console.warn('⚠️ Polling error:', err);
@@ -460,6 +457,11 @@ export default function App() {
           subscriptionRef.current = { unsubscribe: () => clearInterval(pollInterval) };
           console.log('✅ Polling established');
         } else {
+          // 如果 API 返回空，從本地存儲加載
+          console.log('📏 API returned empty, loading from localStorage');
+          const localDocs = loadDocsFromStorage();
+          setDocuments(localDocs);
+          setApiReady(false);  // API 連接失敗
           console.log('⚠️ API not ready, polling disabled. Using localStorage only.');
         }
       } catch (error) {
